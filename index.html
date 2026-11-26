@@ -270,38 +270,96 @@ button:hover {
 <script>
 
 /* =====================================================
-   CONFIGURAÇÃO
+   BRUNO M1 - TESTE PROSPECTIVO V6
+   Parâmetros congelados
 ===================================================== */
 
-const SYMBOL = "EUR/USD";
-const INTERVAL = "1min";
+const CONFIG = {
+    symbol: "EUR/USD",
+    interval: "1min",
+    outputsize: 200,
 
-let chaveAPI = "";
-let timerAtualizacao = null;
+    emaRapidaPeriodo: 9,
+    emaLentaPeriodo: 21,
+    rsiPeriodo: 14,
+    atrPeriodo: 14,
+    mediaCorpoPeriodo: 10,
+    periodoInclinacao: 3,
+
+    callRsiMin: 52,
+    callRsiMax: 68,
+
+    putRsiMin: 32,
+    putRsiMax: 48,
+
+    distanciaMinimaATR: 0.12,
+    corpoMinimoATR: 0.20,
+
+    intervaloMinimo: 5,
+
+    horaInicial: 10,
+    horaFinal: 12,
+
+    /*
+       Início do teste:
+       26/11/2026 às 10h de Brasília
+    */
+
+    inicioTeste:
+        new Date("2026-11-26T10:00:00-03:00")
+};
 
 
 /* =====================================================
-   CONECTAR
+   ESTADO
+===================================================== */
+
+let chaveAPI = "";
+
+let timerAtualizacao = null;
+
+let ultimaVelaProcessada = null;
+
+let indiceUltimoSinal = null;
+
+let contadorVelas = 0;
+
+
+/* =====================================================
+   ELEMENTOS
+===================================================== */
+
+function elemento(id) {
+    return document.getElementById(id);
+}
+
+
+/* =====================================================
+   CONEXÃO
 ===================================================== */
 
 async function conectar() {
 
-    const campo = document.getElementById("apiKey");
+    const campo = elemento("apiKey");
 
     const chave = campo.value.trim();
 
     if (!chave) {
 
-mostrarErro("Digite sua API Key.");
-        
+        mostrarErro(
+            "Digite sua API Key."
+        );
+
         return;
     }
 
+
     chaveAPI = chave;
 
+
     /*
-       A chave fica armazenada somente no navegador.
-       Ela NÃO é enviada para o GitHub.
+       A chave fica somente no navegador.
+       Ela não é incluída no GitHub.
     */
 
     localStorage.setItem(
@@ -310,21 +368,25 @@ mostrarErro("Digite sua API Key.");
     );
 
 
-    document.getElementById("conexaoStatus").innerText =
+    elemento("conexaoStatus").innerText =
         "Conectando...";
+
+
+    elemento("conexaoStatus").style.color =
+        "#91a4bd";
 
 
     await atualizarDados();
 
 
-    /*
-       Atualização aproximadamente a cada minuto.
-    */
-
     if (timerAtualizacao) {
         clearInterval(timerAtualizacao);
     }
 
+
+    /*
+       Faz nova consulta a cada minuto.
+    */
 
     timerAtualizacao = setInterval(
         atualizarDados,
@@ -347,70 +409,107 @@ async function atualizarDados() {
 
     try {
 
+        const parametros =
+            new URLSearchParams({
+
+                symbol:
+                    CONFIG.symbol,
+
+                interval:
+                    CONFIG.interval,
+
+                outputsize:
+                    String(CONFIG.outputsize),
+
+                timezone:
+                    "America/Sao_Paulo",
+
+                apikey:
+                    chaveAPI
+
+            });
+
+
         const url =
-            "https://api.twelvedata.com/time_series" +
-            "?symbol=" + encodeURIComponent(SYMBOL) +
-            "&interval=" + INTERVAL +
-            "&outputsize=200" +
-            "&apikey=" + encodeURIComponent(chaveAPI);
+            "https://api.twelvedata.com/time_series?" +
+            parametros.toString();
 
 
-        const resposta = await fetch(url);
+        const resposta =
+            await fetch(
+                url,
+                {
+                    cache: "no-store"
+                }
+            );
 
 
         if (!resposta.ok) {
 
             throw new Error(
-                "Erro HTTP " + resposta.status
+                "Erro HTTP " +
+                resposta.status
             );
 
         }
 
 
-        const dados = await resposta.json();
+        const dados =
+            await resposta.json();
 
 
         if (
             dados.status === "error" ||
-            !dados.values
+            !Array.isArray(dados.values)
         ) {
 
             throw new Error(
                 dados.message ||
-                "Não foi possível receber os candles."
+                "A API não retornou candles."
             );
 
         }
 
 
         /*
-           Twelve Data normalmente entrega
-           primeiro a vela mais recente.
-
-           Invertemos para trabalhar:
-           antiga -> nova.
+           A API entrega a vela mais nova primeiro.
+           Invertemos para:
+           vela antiga -> vela nova.
         */
 
         const candles =
             dados.values
             .slice()
             .reverse()
-            .map(v => ({
+            .map(valor => ({
 
-                datetime: v.datetime,
+                datetime:
+                    valor.datetime,
 
-                open: Number(v.open),
+                open:
+                    Number(valor.open),
 
-                high: Number(v.high),
+                high:
+                    Number(valor.high),
 
-                low: Number(v.low),
+                low:
+                    Number(valor.low),
 
-                close: Number(v.close)
+                close:
+                    Number(valor.close)
 
-            }));
+            }))
+            .filter(candle =>
+
+                Number.isFinite(candle.open) &&
+                Number.isFinite(candle.high) &&
+                Number.isFinite(candle.low) &&
+                Number.isFinite(candle.close)
+
+            );
 
 
-        if (candles.length < 30) {
+        if (candles.length < 50) {
 
             throw new Error(
                 "Quantidade insuficiente de candles."
@@ -419,21 +518,40 @@ async function atualizarDados() {
         }
 
 
-        processarIndicadores(candles);
+        const velasFechadas =
+            filtrarVelasFechadas(
+                candles
+            );
 
 
-        document.getElementById("conexaoStatus").innerText =
+        if (velasFechadas.length < 50) {
+
+            throw new Error(
+                "Ainda não há velas fechadas suficientes."
+            );
+
+        }
+
+
+        processarV6(
+            velasFechadas
+        );
+
+
+        elemento("conexaoStatus").innerText =
             "● CONECTADO • EUR/USD M1";
 
 
-        document.getElementById("conexaoStatus").style.color =
+        elemento("conexaoStatus").style.color =
             "#46e68b";
 
 
     }
     catch (erro) {
 
-        mostrarErro(erro.message);
+        mostrarErro(
+            erro.message
+        );
 
     }
 
@@ -441,30 +559,122 @@ async function atualizarDados() {
 
 
 /* =====================================================
-   EMA
+   DATA DA VELA EM HORÁRIO DE BRASÍLIA
 ===================================================== */
 
-function calcularEMA(valores, periodo) {
+function converterDataBrasilia(datetime) {
 
-    if (valores.length < periodo) {
-        return NaN;
+    /*
+       A API retorna algo como:
+       2026-11-26 11:13:00
+
+       Acrescentamos o deslocamento de Brasília.
+    */
+
+    return new Date(
+        datetime.replace(
+            " ",
+            "T"
+        ) + "-03:00"
+    );
+
+}
+
+
+/* =====================================================
+   SOMENTE VELAS EFETIVAMENTE FECHADAS
+===================================================== */
+
+function filtrarVelasFechadas(candles) {
+
+    const agora =
+        new Date();
+
+
+    return candles.filter(
+        candle => {
+
+            const inicioVela =
+                converterDataBrasilia(
+                    candle.datetime
+                );
+
+
+            if (
+                Number.isNaN(
+                    inicioVela.getTime()
+                )
+            ) {
+                return false;
+            }
+
+
+            const fechamentoVela =
+                new Date(
+                    inicioVela.getTime() +
+                    60000
+                );
+
+
+            return (
+                fechamentoVela.getTime() <=
+                agora.getTime()
+            );
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   EMA EM SÉRIE
+===================================================== */
+
+function calcularSerieEMA(
+    valores,
+    periodo
+) {
+
+    const resultado =
+        new Array(
+            valores.length
+        ).fill(NaN);
+
+
+    if (
+        valores.length <
+        periodo
+    ) {
+        return resultado;
     }
-
-
-    const multiplicador =
-        2 / (periodo + 1);
 
 
     let soma = 0;
 
 
-    for (let i = 0; i < periodo; i++) {
+    for (
+        let i = 0;
+        i < periodo;
+        i++
+    ) {
+
         soma += valores[i];
+
     }
 
 
     let ema =
         soma / periodo;
+
+
+    resultado[
+        periodo - 1
+    ] = ema;
+
+
+    const multiplicador =
+        2 / (periodo + 1);
 
 
     for (
@@ -475,26 +685,45 @@ function calcularEMA(valores, periodo) {
 
         ema =
             (
-                valores[i] - ema
-            ) * multiplicador + ema;
+                valores[i] -
+                ema
+            ) *
+            multiplicador +
+            ema;
+
+
+        resultado[i] =
+            ema;
 
     }
 
 
-    return ema;
+    return resultado;
 
 }
 
 
 /* =====================================================
-   RSI 14
-   Wilder / RMA
+   RSI EM SÉRIE
+   Método Wilder, equivalente ao RMA
 ===================================================== */
 
-function calcularRSI(valores, periodo) {
+function calcularSerieRSI(
+    valores,
+    periodo
+) {
 
-    if (valores.length <= periodo) {
-        return NaN;
+    const resultado =
+        new Array(
+            valores.length
+        ).fill(NaN);
+
+
+    if (
+        valores.length <=
+        periodo
+    ) {
+        return resultado;
     }
 
 
@@ -513,12 +742,18 @@ function calcularRSI(valores, periodo) {
             valores[i - 1];
 
 
-        if (diferenca >= 0) {
-            ganhos += diferenca;
-        }
-        else {
-            perdas += Math.abs(diferenca);
-        }
+        ganhos +=
+            Math.max(
+                diferenca,
+                0
+            );
+
+
+        perdas +=
+            Math.max(
+                -diferenca,
+                0
+            );
 
     }
 
@@ -526,8 +761,21 @@ function calcularRSI(valores, periodo) {
     let mediaGanhos =
         ganhos / periodo;
 
+
     let mediaPerdas =
         perdas / periodo;
+
+
+    resultado[periodo] =
+        mediaPerdas === 0
+        ? 100
+        : 100 -
+          100 /
+          (
+              1 +
+              mediaGanhos /
+              mediaPerdas
+          );
 
 
     for (
@@ -542,15 +790,17 @@ function calcularRSI(valores, periodo) {
 
 
         const ganho =
-            diferenca > 0
-            ? diferenca
-            : 0;
+            Math.max(
+                diferenca,
+                0
+            );
 
 
         const perda =
-            diferenca < 0
-            ? Math.abs(diferenca)
-            : 0;
+            Math.max(
+                -diferenca,
+                0
+            );
 
 
         mediaGanhos =
@@ -558,7 +808,8 @@ function calcularRSI(valores, periodo) {
                 mediaGanhos *
                 (periodo - 1) +
                 ganho
-            ) / periodo;
+            ) /
+            periodo;
 
 
         mediaPerdas =
@@ -566,42 +817,62 @@ function calcularRSI(valores, periodo) {
                 mediaPerdas *
                 (periodo - 1) +
                 perda
-            ) / periodo;
+            ) /
+            periodo;
+
+
+        resultado[i] =
+            mediaPerdas === 0
+            ? 100
+            : 100 -
+              100 /
+              (
+                  1 +
+                  mediaGanhos /
+                  mediaPerdas
+              );
 
     }
 
 
-    if (mediaPerdas === 0) {
-        return 100;
-    }
-
-
-    const rs =
-        mediaGanhos /
-        mediaPerdas;
-
-
-    return (
-        100 -
-        (100 / (1 + rs))
-    );
+    return resultado;
 
 }
 
 
 /* =====================================================
-   ATR 14
-   Wilder / RMA
+   ATR EM SÉRIE
+   Método Wilder, equivalente ao RMA
 ===================================================== */
 
-function calcularATR(candles, periodo) {
+function calcularSerieATR(
+    candles,
+    periodo
+) {
 
-    if (candles.length <= periodo) {
-        return NaN;
+    const resultado =
+        new Array(
+            candles.length
+        ).fill(NaN);
+
+
+    if (
+        candles.length <=
+        periodo
+    ) {
+        return resultado;
     }
 
 
-    const tr = [];
+    const trueRanges =
+        new Array(
+            candles.length
+        ).fill(NaN);
+
+
+    trueRanges[0] =
+        candles[0].high -
+        candles[0].low;
 
 
     for (
@@ -613,11 +884,12 @@ function calcularATR(candles, periodo) {
         const atual =
             candles[i];
 
-        const anterior =
-            candles[i - 1];
+
+        const fechamentoAnterior =
+            candles[i - 1].close;
 
 
-        const trueRange =
+        trueRanges[i] =
             Math.max(
 
                 atual.high -
@@ -625,18 +897,15 @@ function calcularATR(candles, periodo) {
 
                 Math.abs(
                     atual.high -
-                    anterior.close
+                    fechamentoAnterior
                 ),
 
                 Math.abs(
                     atual.low -
-                    anterior.close
+                    fechamentoAnterior
                 )
 
             );
-
-
-        tr.push(trueRange);
 
     }
 
@@ -650,7 +919,8 @@ function calcularATR(candles, periodo) {
         i++
     ) {
 
-        soma += tr[i];
+        soma +=
+            trueRanges[i];
 
     }
 
@@ -659,9 +929,14 @@ function calcularATR(candles, periodo) {
         soma / periodo;
 
 
+    resultado[
+        periodo - 1
+    ] = atr;
+
+
     for (
         let i = periodo;
-        i < tr.length;
+        i < trueRanges.length;
         i++
     ) {
 
@@ -669,101 +944,704 @@ function calcularATR(candles, periodo) {
             (
                 atr *
                 (periodo - 1) +
-                tr[i]
-            ) / periodo;
+                trueRanges[i]
+            ) /
+            periodo;
+
+
+        resultado[i] =
+            atr;
 
     }
 
 
-    return atr;
+    return resultado;
 
 }
 
 
 /* =====================================================
-   PROCESSAR
+   MÉDIA SIMPLES DOS CORPOS
 ===================================================== */
 
-function processarIndicadores(candles) {
+function calcularMediaCorpos(
+    candles,
+    indice,
+    periodo
+) {
+
+    const inicio =
+        indice -
+        periodo +
+        1;
+
+
+    if (inicio < 0) {
+        return NaN;
+    }
+
+
+    let soma = 0;
+
+
+    for (
+        let i = inicio;
+        i <= indice;
+        i++
+    ) {
+
+        soma +=
+            Math.abs(
+                candles[i].close -
+                candles[i].open
+            );
+
+    }
+
+
+    return soma / periodo;
+
+}
+
+
+/* =====================================================
+   HORÁRIO BRASÍLIA
+===================================================== */
+
+function obterPartesBrasilia(data) {
+
+    const partes =
+        new Intl.DateTimeFormat(
+            "pt-BR",
+            {
+                timeZone:
+                    "America/Sao_Paulo",
+
+                year:
+                    "numeric",
+
+                month:
+                    "2-digit",
+
+                day:
+                    "2-digit",
+
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                second:
+                    "2-digit",
+
+                hour12:
+                    false
+            }
+        ).formatToParts(data);
+
+
+    const resultado = {};
+
+
+    for (
+        const parte of partes
+    ) {
+
+        if (
+            parte.type !==
+            "literal"
+        ) {
+
+            resultado[
+                parte.type
+            ] =
+                Number(
+                    parte.value
+                );
+
+        }
+
+    }
+
+
+    return resultado;
+
+}
+
+
+/* =====================================================
+   PROCESSAR V6
+===================================================== */
+
+function processarV6(candles) {
 
     const fechamentos =
         candles.map(
-            candle => candle.close
+            candle =>
+                candle.close
         );
+
+
+    const serieEma9 =
+        calcularSerieEMA(
+            fechamentos,
+            CONFIG.emaRapidaPeriodo
+        );
+
+
+    const serieEma21 =
+        calcularSerieEMA(
+            fechamentos,
+            CONFIG.emaLentaPeriodo
+        );
+
+
+    const serieRsi =
+        calcularSerieRSI(
+            fechamentos,
+            CONFIG.rsiPeriodo
+        );
+
+
+    const serieAtr =
+        calcularSerieATR(
+            candles,
+            CONFIG.atrPeriodo
+        );
+
+
+    const indice =
+        candles.length - 1;
+
+
+    const vela =
+        candles[indice];
 
 
     const ema9 =
-        calcularEMA(
-            fechamentos,
-            9
-        );
+        serieEma9[indice];
 
 
     const ema21 =
-        calcularEMA(
-            fechamentos,
-            21
+        serieEma21[indice];
+
+
+    const rsi =
+        serieRsi[indice];
+
+
+    const atr =
+        serieAtr[indice];
+
+
+    const indiceInclinacao =
+        indice -
+        CONFIG.periodoInclinacao;
+
+
+    if (
+        indiceInclinacao < 0 ||
+        !Number.isFinite(
+            serieEma9[
+                indiceInclinacao
+            ]
+        )
+    ) {
+
+        throw new Error(
+            "Histórico insuficiente para calcular a inclinação."
         );
 
-
-    const rsi14 =
-        calcularRSI(
-            fechamentos,
-            14
-        );
+    }
 
 
-    const atr14 =
-        calcularATR(
+    const mediaCorpo =
+        calcularMediaCorpos(
             candles,
-            14
+            indice,
+            CONFIG.mediaCorpoPeriodo
         );
 
 
-    const ultimaVela =
-        candles[
-            candles.length - 1
+    const corpo =
+        Math.abs(
+            vela.close -
+            vela.open
+        );
+
+
+    const distanciaEMAs =
+        Math.abs(
+            ema9 -
+            ema21
+        );
+
+
+    /* Tendência */
+
+    const tendenciaAlta =
+        ema9 > ema21;
+
+
+    const tendenciaBaixa =
+        ema9 < ema21;
+
+
+    const emaRapidaSubindo =
+        ema9 >
+        serieEma9[
+            indiceInclinacao
         ];
 
 
-    document.getElementById("ema9").innerText =
-        ema9.toFixed(5);
+    const emaRapidaCaindo =
+        ema9 <
+        serieEma9[
+            indiceInclinacao
+        ];
 
 
-    document.getElementById("ema21").innerText =
-        ema21.toFixed(5);
+    /* Lateralização */
+
+    const mercadoComTendencia =
+        distanciaEMAs >=
+        atr *
+        CONFIG.distanciaMinimaATR;
 
 
-    document.getElementById("rsi").innerText =
-        rsi14.toFixed(2);
+    /* Corpo da vela */
+
+    const velaAlta =
+        vela.close >
+        vela.open &&
+
+        corpo >
+        mediaCorpo &&
+
+        corpo >=
+        atr *
+        CONFIG.corpoMinimoATR;
 
 
-    document.getElementById("atr").innerText =
-        atr14.toFixed(5);
+    const velaBaixa =
+        vela.close <
+        vela.open &&
+
+        corpo >
+        mediaCorpo &&
+
+        corpo >=
+        atr *
+        CONFIG.corpoMinimoATR;
 
 
-    document.getElementById("preco").innerText =
-        ultimaVela.close.toFixed(5);
+    /* Posição do preço */
+
+    const precoAcimaMedias =
+        vela.close >
+        ema9 &&
+
+        vela.close >
+        ema21;
 
 
-    document.getElementById(
-        "ultimaAtualizacao"
-    ).innerText =
-        ultimaVela.datetime;
+    const precoAbaixoMedias =
+        vela.close <
+        ema9 &&
+
+        vela.close <
+        ema21;
+
+
+    /* RSI */
+
+    const rsiCall =
+        rsi >=
+        CONFIG.callRsiMin &&
+
+        rsi <=
+        CONFIG.callRsiMax;
+
+
+    const rsiPut =
+        rsi >=
+        CONFIG.putRsiMin &&
+
+        rsi <=
+        CONFIG.putRsiMax;
+
+
+    /* Período prospectivo */
+
+    const dataVela =
+        converterDataBrasilia(
+            vela.datetime
+        );
+
+
+    const partes =
+        obterPartesBrasilia(
+            dataVela
+        );
+
+
+    const depoisDoInicio =
+        dataVela.getTime() >=
+        CONFIG.inicioTeste.getTime();
+
+
+    const dentroDoHorario =
+        partes.hour >=
+        CONFIG.horaInicial &&
+
+        partes.hour <
+        CONFIG.horaFinal;
+
+
+    const testeAtivo =
+        depoisDoInicio &&
+        dentroDoHorario;
 
 
     /*
-       Ainda NÃO liberamos CALL/PUT.
-
-       Primeiro validaremos os dados.
+       Conta somente uma vez cada nova vela.
     */
 
-    document.getElementById("status").innerText =
-        "MONITORANDO";
+    if (
+        ultimaVelaProcessada !==
+        vela.datetime
+    ) {
+
+        contadorVelas++;
+
+        ultimaVelaProcessada =
+            vela.datetime;
+
+    }
 
 
-    document.getElementById("status").style.color =
-        "#45a3ff";
+    const podeDarSinal =
+        indiceUltimoSinal === null ||
+
+        contadorVelas -
+        indiceUltimoSinal >=
+        CONFIG.intervaloMinimo;
+
+
+    /* Condições finais */
+
+    const sinalCall =
+        testeAtivo &&
+        tendenciaAlta &&
+        emaRapidaSubindo &&
+        mercadoComTendencia &&
+        velaAlta &&
+        precoAcimaMedias &&
+        rsiCall &&
+        podeDarSinal;
+
+
+    const sinalPut =
+        testeAtivo &&
+        tendenciaBaixa &&
+        emaRapidaCaindo &&
+        mercadoComTendencia &&
+        velaBaixa &&
+        precoAbaixoMedias &&
+        rsiPut &&
+        podeDarSinal;
+
+
+    atualizarPainel(
+        {
+            vela,
+            ema9,
+            ema21,
+            rsi,
+            atr,
+            testeAtivo,
+            depoisDoInicio,
+            dentroDoHorario,
+            sinalCall,
+            sinalPut
+        }
+    );
+
+
+    if (sinalCall) {
+
+        indiceUltimoSinal =
+            contadorVelas;
+
+        emitirSinal(
+            "CALL",
+            vela
+        );
+
+    }
+    else if (sinalPut) {
+
+        indiceUltimoSinal =
+            contadorVelas;
+
+        emitirSinal(
+            "PUT",
+            vela
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   ATUALIZAR PAINEL
+===================================================== */
+
+function atualizarPainel(resultado) {
+
+    const {
+        vela,
+        ema9,
+        ema21,
+        rsi,
+        atr,
+        testeAtivo,
+        depoisDoInicio,
+        dentroDoHorario,
+        sinalCall,
+        sinalPut
+    } = resultado;
+
+
+    elemento("ema9").innerText =
+        ema9.toFixed(5);
+
+
+    elemento("ema21").innerText =
+        ema21.toFixed(5);
+
+
+    elemento("rsi").innerText =
+        rsi.toFixed(2);
+
+
+    elemento("atr").innerText =
+        atr.toFixed(5);
+
+
+    elemento("preco").innerText =
+        vela.close.toFixed(5);
+
+
+    elemento(
+        "ultimaAtualizacao"
+    ).innerText =
+        vela.datetime +
+        " • vela fechada";
+
+
+    if (sinalCall) {
+
+        definirStatus(
+            "CALL",
+            "#46e68b"
+        );
+
+        return;
+    }
+
+
+    if (sinalPut) {
+
+        definirStatus(
+            "PUT",
+            "#ff5f67"
+        );
+
+        return;
+    }
+
+
+    if (!depoisDoInicio) {
+
+        definirStatus(
+            "AGUARDANDO INÍCIO",
+            "#f2b84b"
+        );
+
+        return;
+    }
+
+
+    if (!dentroDoHorario) {
+
+        definirStatus(
+            "FORA DO HORÁRIO",
+            "#f2b84b"
+        );
+
+        return;
+    }
+
+
+    if (testeAtivo) {
+
+        definirStatus(
+            "MONITORANDO",
+            "#45a3ff"
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   EMITIR SINAL
+===================================================== */
+
+function emitirSinal(
+    direcao,
+    vela
+) {
+
+    /*
+       Evita repetir o mesmo alerta
+       enquanto a API ainda retorna
+       a mesma última vela.
+    */
+
+    const chaveAlerta =
+        "v6_alerta_" +
+        direcao +
+        "_" +
+        vela.datetime;
+
+
+    if (
+        sessionStorage.getItem(
+            chaveAlerta
+        )
+    ) {
+        return;
+    }
+
+
+    sessionStorage.setItem(
+        chaveAlerta,
+        "1"
+    );
+
+
+    /*
+       Aviso sonoro simples.
+       Se o navegador bloquear som,
+       o painel visual continuará funcionando.
+    */
+
+    tocarAlerta();
+
+
+    const mensagem =
+        direcao +
+        " confirmado no EUR/USD M1.\n\n" +
+        "Entrada no início da próxima vela.\n" +
+        "Expiração de 1 minuto.\n\n" +
+        "Teste somente em conta DEMO.";
+
+
+    setTimeout(
+        () => alert(mensagem),
+        100
+    );
+
+}
+
+
+/* =====================================================
+   SOM DO ALERTA
+===================================================== */
+
+function tocarAlerta() {
+
+    try {
+
+        const contexto =
+            new (
+                window.AudioContext ||
+                window.webkitAudioContext
+            )();
+
+
+        const oscilador =
+            contexto.createOscillator();
+
+
+        const ganho =
+            contexto.createGain();
+
+
+        oscilador.connect(
+            ganho
+        );
+
+
+        ganho.connect(
+            contexto.destination
+        );
+
+
+        oscilador.frequency.value =
+            880;
+
+
+        ganho.gain.value =
+            0.08;
+
+
+        oscilador.start();
+
+
+        setTimeout(
+            () => {
+
+                oscilador.stop();
+
+                contexto.close();
+
+            },
+            350
+        );
+
+    }
+    catch (erro) {
+
+        console.log(
+            "Aviso sonoro bloqueado pelo navegador."
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   STATUS VISUAL
+===================================================== */
+
+function definirStatus(
+    texto,
+    cor
+) {
+
+    elemento("status").innerText =
+        texto;
+
+
+    elemento("status").style.color =
+        cor;
 
 }
 
@@ -774,28 +1652,23 @@ function processarIndicadores(candles) {
 
 function mostrarErro(mensagem) {
 
-    document.getElementById(
+    elemento(
         "conexaoStatus"
     ).innerText =
-        "ERRO: " + mensagem;
+        "ERRO: " +
+        mensagem;
 
 
-    document.getElementById(
+    elemento(
         "conexaoStatus"
     ).style.color =
         "#ff5f67";
 
 
-    document.getElementById(
-        "status"
-    ).innerText =
-        "SEM DADOS";
-
-
-    document.getElementById(
-        "status"
-    ).style.color =
-        "#ff5f67";
+    definirStatus(
+        "SEM DADOS",
+        "#ff5f67"
+    );
 
 }
 
@@ -808,17 +1681,18 @@ window.addEventListener(
     "load",
     () => {
 
-        const salva =
+        const chaveSalva =
             localStorage.getItem(
                 "v6_twelve_api_key"
             );
 
 
-        if (salva) {
+        if (chaveSalva) {
 
-            document.getElementById(
+            elemento(
                 "apiKey"
-            ).value = salva;
+            ).value =
+                chaveSalva;
 
         }
 
