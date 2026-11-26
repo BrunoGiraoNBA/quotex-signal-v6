@@ -1,151 +1,831 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V6 Signal | EUR/USD</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    * {
-      box-sizing: border-box;
+<title>V6 Signal | EUR/USD</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #07111f;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.painel {
+    width: 90%;
+    max-width: 700px;
+    background: #101c2d;
+    border: 1px solid #263852;
+    border-radius: 18px;
+    padding: 30px;
+    text-align: center;
+}
+
+h1 {
+    margin: 0 0 8px;
+    color: #45a3ff;
+}
+
+.subtitulo {
+    color: #91a4bd;
+    margin-bottom: 25px;
+}
+
+.mercado {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.timeframe {
+    margin-top: 6px;
+    color: #91a4bd;
+}
+
+.conexao {
+    margin-top: 25px;
+    padding: 18px;
+    background: #17263a;
+    border-radius: 12px;
+}
+
+input {
+    width: 65%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #344b69;
+    background: #0c1726;
+    color: white;
+    outline: none;
+}
+
+button {
+    padding: 12px 18px;
+    margin-left: 6px;
+    border: none;
+    border-radius: 8px;
+    background: #2589ff;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1476df;
+}
+
+#conexaoStatus {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #91a4bd;
+}
+
+.sinal {
+    margin: 25px 0;
+    padding: 30px 10px;
+    background: #17263a;
+    border-radius: 15px;
+}
+
+#status {
+    font-size: 38px;
+    font-weight: bold;
+    color: #aab7c7;
+}
+
+.indicadores {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.indicador {
+    background: #17263a;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.nome {
+    color: #8296af;
+    font-size: 13px;
+}
+
+.valor {
+    margin-top: 6px;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.info {
+    margin-top: 20px;
+    padding: 12px;
+    background: #0c1726;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #91a4bd;
+}
+
+#preco {
+    color: white;
+    font-weight: bold;
+}
+
+.rodape {
+    margin-top: 22px;
+    color: #647891;
+    font-size: 12px;
+}
+
+@media (max-width: 600px) {
+
+    input {
+        width: 100%;
+        margin-bottom: 8px;
     }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: #07111f;
-      color: white;
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    button {
+        width: 100%;
+        margin: 0;
     }
 
-    .painel {
-      width: 90%;
-      max-width: 700px;
-      background: #101c2d;
-      border: 1px solid #263852;
-      border-radius: 18px;
-      padding: 30px;
-      text-align: center;
-    }
+}
 
-    h1 {
-      margin: 0 0 8px;
-      color: #45a3ff;
-    }
-
-    .subtitulo {
-      color: #91a4bd;
-      margin-bottom: 30px;
-    }
-
-    .mercado {
-      font-size: 28px;
-      font-weight: bold;
-    }
-
-    .timeframe {
-      margin-top: 6px;
-      color: #91a4bd;
-    }
-
-    .sinal {
-      margin: 30px 0;
-      padding: 30px 10px;
-      background: #17263a;
-      border-radius: 15px;
-    }
-
-    #status {
-      font-size: 42px;
-      font-weight: bold;
-      color: #aab7c7;
-    }
-
-    .indicadores {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .indicador {
-      background: #17263a;
-      padding: 15px;
-      border-radius: 10px;
-    }
-
-    .nome {
-      color: #8296af;
-      font-size: 13px;
-    }
-
-    .valor {
-      margin-top: 6px;
-      font-weight: bold;
-      font-size: 18px;
-    }
-
-    .rodape {
-      margin-top: 25px;
-      color: #647891;
-      font-size: 12px;
-    }
-  </style>
+</style>
 </head>
 
 <body>
 
-  <div class="painel">
+<div class="painel">
 
     <h1>V6 SIGNAL</h1>
 
     <div class="subtitulo">
-      Painel experimental de sinais
+        Teste Prospectivo V6
     </div>
 
     <div class="mercado">
-      EUR/USD
+        EUR/USD
     </div>
 
     <div class="timeframe">
-      M1 • Entrada na próxima vela
+        M1 • Entrada na próxima vela
     </div>
 
-    <div class="sinal">
-      <div id="status">AGUARDANDO DADOS</div>
+
+    <!-- CONEXÃO -->
+
+    <div class="conexao">
+
+        <input
+            id="apiKey"
+            type="password"
+            placeholder="Cole sua API Key da Twelve Data">
+
+        <button onclick="conectar()">
+            CONECTAR
+        </button>
+
+        <div id="conexaoStatus">
+            Desconectado
+        </div>
+
     </div>
+
+
+    <!-- SINAL -->
+
+    <div class="sinal">
+        <div id="status">
+            AGUARDANDO DADOS
+        </div>
+    </div>
+
+
+    <!-- INDICADORES -->
 
     <div class="indicadores">
 
-      <div class="indicador">
-        <div class="nome">EMA 9</div>
-        <div class="valor" id="ema9">--</div>
-      </div>
+        <div class="indicador">
+            <div class="nome">EMA 9</div>
+            <div class="valor" id="ema9">--</div>
+        </div>
 
-      <div class="indicador">
-        <div class="nome">EMA 21</div>
-        <div class="valor" id="ema21">--</div>
-      </div>
+        <div class="indicador">
+            <div class="nome">EMA 21</div>
+            <div class="valor" id="ema21">--</div>
+        </div>
 
-      <div class="indicador">
-        <div class="nome">RSI 14</div>
-        <div class="valor" id="rsi">--</div>
-      </div>
+        <div class="indicador">
+            <div class="nome">RSI 14</div>
+            <div class="valor" id="rsi">--</div>
+        </div>
 
-      <div class="indicador">
-        <div class="nome">ATR 14</div>
-        <div class="valor" id="atr">--</div>
-      </div>
+        <div class="indicador">
+            <div class="nome">ATR 14</div>
+            <div class="valor" id="atr">--</div>
+        </div>
 
     </div>
+
+
+    <!-- INFORMAÇÕES -->
+
+    <div class="info">
+
+        Último fechamento:
+
+        <span id="preco">
+            --
+        </span>
+
+        <br><br>
+
+        Última atualização:
+
+        <span id="ultimaAtualizacao">
+            --
+        </span>
+
+    </div>
+
 
     <div class="rodape">
-      V6 • DEMO • Nenhuma operação é executada automaticamente
+        V6 • DEMO • Nenhuma operação é executada automaticamente
     </div>
 
-  </div>
+</div>
+
+
+<script>
+
+/* =====================================================
+   CONFIGURAÇÃO
+===================================================== */
+
+const SYMBOL = "EUR/USD";
+const INTERVAL = "1min";
+
+let chaveAPI = "";
+let timerAtualizacao = null;
+
+
+/* =====================================================
+   CONECTAR
+===================================================== */
+
+async function conectar() {
+
+    const campo = document.getElementById("apiKey");
+
+    const chave = campo.value.trim();
+
+    if (!chave) {
+
+        mostrarErro("Digite sua API Key.");
+
+        return;
+    }
+
+    chaveAPI = chave;
+
+    /*
+       A chave fica armazenada somente no navegador.
+       Ela NÃO é enviada para o GitHub.
+    */
+
+    localStorage.setItem(
+        "v6_twelve_api_key",
+        chaveAPI
+    );
+
+
+    document.getElementById("conexaoStatus").innerText =
+        "Conectando...";
+
+
+    await atualizarDados();
+
+
+    /*
+       Atualização aproximadamente a cada minuto.
+    */
+
+    if (timerAtualizacao) {
+        clearInterval(timerAtualizacao);
+    }
+
+
+    timerAtualizacao = setInterval(
+        atualizarDados,
+        60000
+    );
+
+}
+
+
+/* =====================================================
+   BUSCAR CANDLES
+===================================================== */
+
+async function atualizarDados() {
+
+    if (!chaveAPI) {
+        return;
+    }
+
+
+    try {
+
+        const url =
+            "https://api.twelvedata.com/time_series" +
+            "?symbol=" + encodeURIComponent(SYMBOL) +
+            "&interval=" + INTERVAL +
+            "&outputsize=200" +
+            "&apikey=" + encodeURIComponent(chaveAPI);
+
+
+        const resposta = await fetch(url);
+
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                "Erro HTTP " + resposta.status
+            );
+
+        }
+
+
+        const dados = await resposta.json();
+
+
+        if (
+            dados.status === "error" ||
+            !dados.values
+        ) {
+
+            throw new Error(
+                dados.message ||
+                "Não foi possível receber os candles."
+            );
+
+        }
+
+
+        /*
+           Twelve Data normalmente entrega
+           primeiro a vela mais recente.
+
+           Invertemos para trabalhar:
+           antiga -> nova.
+        */
+
+        const candles =
+            dados.values
+            .slice()
+            .reverse()
+            .map(v => ({
+
+                datetime: v.datetime,
+
+                open: Number(v.open),
+
+                high: Number(v.high),
+
+                low: Number(v.low),
+
+                close: Number(v.close)
+
+            }));
+
+
+        if (candles.length < 30) {
+
+            throw new Error(
+                "Quantidade insuficiente de candles."
+            );
+
+        }
+
+
+        processarIndicadores(candles);
+
+
+        document.getElementById("conexaoStatus").innerText =
+            "● CONECTADO • EUR/USD M1";
+
+
+        document.getElementById("conexaoStatus").style.color =
+            "#46e68b";
+
+
+    }
+    catch (erro) {
+
+        mostrarErro(erro.message);
+
+    }
+
+}
+
+
+/* =====================================================
+   EMA
+===================================================== */
+
+function calcularEMA(valores, periodo) {
+
+    if (valores.length < periodo) {
+        return NaN;
+    }
+
+
+    const multiplicador =
+        2 / (periodo + 1);
+
+
+    let soma = 0;
+
+
+    for (let i = 0; i < periodo; i++) {
+        soma += valores[i];
+    }
+
+
+    let ema =
+        soma / periodo;
+
+
+    for (
+        let i = periodo;
+        i < valores.length;
+        i++
+    ) {
+
+        ema =
+            (
+                valores[i] - ema
+            ) * multiplicador + ema;
+
+    }
+
+
+    return ema;
+
+}
+
+
+/* =====================================================
+   RSI 14
+   Wilder / RMA
+===================================================== */
+
+function calcularRSI(valores, periodo) {
+
+    if (valores.length <= periodo) {
+        return NaN;
+    }
+
+
+    let ganhos = 0;
+    let perdas = 0;
+
+
+    for (
+        let i = 1;
+        i <= periodo;
+        i++
+    ) {
+
+        const diferenca =
+            valores[i] -
+            valores[i - 1];
+
+
+        if (diferenca >= 0) {
+            ganhos += diferenca;
+        }
+        else {
+            perdas += Math.abs(diferenca);
+        }
+
+    }
+
+
+    let mediaGanhos =
+        ganhos / periodo;
+
+    let mediaPerdas =
+        perdas / periodo;
+
+
+    for (
+        let i = periodo + 1;
+        i < valores.length;
+        i++
+    ) {
+
+        const diferenca =
+            valores[i] -
+            valores[i - 1];
+
+
+        const ganho =
+            diferenca > 0
+            ? diferenca
+            : 0;
+
+
+        const perda =
+            diferenca < 0
+            ? Math.abs(diferenca)
+            : 0;
+
+
+        mediaGanhos =
+            (
+                mediaGanhos *
+                (periodo - 1) +
+                ganho
+            ) / periodo;
+
+
+        mediaPerdas =
+            (
+                mediaPerdas *
+                (periodo - 1) +
+                perda
+            ) / periodo;
+
+    }
+
+
+    if (mediaPerdas === 0) {
+        return 100;
+    }
+
+
+    const rs =
+        mediaGanhos /
+        mediaPerdas;
+
+
+    return (
+        100 -
+        (100 / (1 + rs))
+    );
+
+}
+
+
+/* =====================================================
+   ATR 14
+   Wilder / RMA
+===================================================== */
+
+function calcularATR(candles, periodo) {
+
+    if (candles.length <= periodo) {
+        return NaN;
+    }
+
+
+    const tr = [];
+
+
+    for (
+        let i = 1;
+        i < candles.length;
+        i++
+    ) {
+
+        const atual =
+            candles[i];
+
+        const anterior =
+            candles[i - 1];
+
+
+        const trueRange =
+            Math.max(
+
+                atual.high -
+                atual.low,
+
+                Math.abs(
+                    atual.high -
+                    anterior.close
+                ),
+
+                Math.abs(
+                    atual.low -
+                    anterior.close
+                )
+
+            );
+
+
+        tr.push(trueRange);
+
+    }
+
+
+    let soma = 0;
+
+
+    for (
+        let i = 0;
+        i < periodo;
+        i++
+    ) {
+
+        soma += tr[i];
+
+    }
+
+
+    let atr =
+        soma / periodo;
+
+
+    for (
+        let i = periodo;
+        i < tr.length;
+        i++
+    ) {
+
+        atr =
+            (
+                atr *
+                (periodo - 1) +
+                tr[i]
+            ) / periodo;
+
+    }
+
+
+    return atr;
+
+}
+
+
+/* =====================================================
+   PROCESSAR
+===================================================== */
+
+function processarIndicadores(candles) {
+
+    const fechamentos =
+        candles.map(
+            candle => candle.close
+        );
+
+
+    const ema9 =
+        calcularEMA(
+            fechamentos,
+            9
+        );
+
+
+    const ema21 =
+        calcularEMA(
+            fechamentos,
+            21
+        );
+
+
+    const rsi14 =
+        calcularRSI(
+            fechamentos,
+            14
+        );
+
+
+    const atr14 =
+        calcularATR(
+            candles,
+            14
+        );
+
+
+    const ultimaVela =
+        candles[
+            candles.length - 1
+        ];
+
+
+    document.getElementById("ema9").innerText =
+        ema9.toFixed(5);
+
+
+    document.getElementById("ema21").innerText =
+        ema21.toFixed(5);
+
+
+    document.getElementById("rsi").innerText =
+        rsi14.toFixed(2);
+
+
+    document.getElementById("atr").innerText =
+        atr14.toFixed(5);
+
+
+    document.getElementById("preco").innerText =
+        ultimaVela.close.toFixed(5);
+
+
+    document.getElementById(
+        "ultimaAtualizacao"
+    ).innerText =
+        ultimaVela.datetime;
+
+
+    /*
+       Ainda NÃO liberamos CALL/PUT.
+
+       Primeiro validaremos os dados.
+    */
+
+    document.getElementById("status").innerText =
+        "MONITORANDO";
+
+
+    document.getElementById("status").style.color =
+        "#45a3ff";
+
+}
+
+
+/* =====================================================
+   ERROS
+===================================================== */
+
+function mostrarErro(mensagem) {
+
+    document.getElementById(
+        "conexaoStatus"
+    ).innerText =
+        "ERRO: " + mensagem;
+
+
+    document.getElementById(
+        "conexaoStatus"
+    ).style.color =
+        "#ff5f67";
+
+
+    document.getElementById(
+        "status"
+    ).innerText =
+        "SEM DADOS";
+
+
+    document.getElementById(
+        "status"
+    ).style.color =
+        "#ff5f67";
+
+}
+
+
+/* =====================================================
+   RECUPERAR CHAVE SALVA
+===================================================== */
+
+window.addEventListener(
+    "load",
+    () => {
+
+        const salva =
+            localStorage.getItem(
+                "v6_twelve_api_key"
+            );
+
+
+        if (salva) {
+
+            document.getElementById(
+                "apiKey"
+            ).value = salva;
+
+        }
+
+    }
+);
+
+</script>
 
 </body>
 </html>
